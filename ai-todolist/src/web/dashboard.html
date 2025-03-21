@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Your Todo Dashboard</h1>
+        <nav>
+            <a href="{{ url_for('index') }}">Home</a>
+            <a href="{{ url_for('projects') }}">Projects</a>
+        </nav>
+    </header>
+    <main>
+        <section id="todo-list">
+            <h2>Your Todo Items</h2>
+            <ul>
+                <!-- Todo items will be dynamically inserted here -->
+                {% for todo in todos %}
+                    <li>{{ todo.title }} - {{ todo.status }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        <section id="summary">
+            <h2>Recent Activities</h2>
+            <p>{{ summary }}</p>
+        </section>
+        <section id="suggestions">
+            <h2>Suggestions</h2>
+            <ul>
+                <!-- Suggestions will be dynamically inserted here -->
+                {% for suggestion in suggestions %}
+                    <li>{{ suggestion }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2023 Your Todo List Application</p>
+    </footer>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
