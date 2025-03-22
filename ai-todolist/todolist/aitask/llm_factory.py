@@ -9,6 +9,42 @@ import os
 class LLMFactory:
     """LLM提供商工厂类"""
 
+    def __init__(self, config_file=None, config=None):
+        """初始化LLM工厂
+        
+        参数:
+            config_file (str, 可选): 配置文件路径
+            config (ConfigParser, 可选): 现有配置对象
+        """
+        self.config_file = config_file
+        self.config_object = config
+        
+        if config_file:
+            self._load_config_from_file()
+        elif config:
+            self.config = config
+        else:
+            raise ValueError("必须提供config_file或config参数之一")
+        
+    def _load_config_from_file(self):
+        """从文件加载配置"""
+        import configparser
+        self.config = configparser.ConfigParser()
+        try:
+            self.config.read(self.config_file, encoding='utf-8')
+        except Exception as e:
+            print(f"加载配置文件失败: {e}")
+            # 创建默认配置
+            self.config = configparser.ConfigParser()
+            self.config['llm'] = {
+                'provider': 'volcanoark',
+                'model_name': 'deepseek-v3-241226',
+                'endpoint': 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+                'timeout': '15',
+                'proxy_host': '',
+                'proxy_port': '',
+            }
+
     @staticmethod
     def setup_global_proxy(config_file: str = "config.ini") -> bool:
         """设置全局代理环境变量"""
@@ -67,3 +103,52 @@ class LLMFactory:
         else:
             print(f"不支持的LLM提供商: {provider_name}")
             return None
+    
+    @staticmethod
+    def create_llm(config):
+        """根据配置文件创建适当的LLM提供商实例"""
+        provider_name = config.get('llm', 'provider', fallback='volcanoark')
+        api_key = os.environ.get(f"{provider_name.upper()}_API_KEY", "")
+        
+        if not api_key:
+            print(f"错误: {provider_name.upper()}_API_KEY 环境变量未设置")
+            return None
+                
+        if provider_name == 'volcanoark':
+            from .llm_providers.volcanoark import VolcanoArkProvider
+            model_name = config.get('llm', 'model_name', fallback='deepseek-v3-241226')
+            endpoint = config.get('llm', 'endpoint', fallback='https://ark.cn-beijing.volces.com/api/v3/chat/completions')
+            timeout = config.getint('llm', 'timeout', fallback=15)
+            return VolcanoArkProvider(
+                api_key=api_key,
+                model_name=model_name,  # 修正参数名
+                endpoint=endpoint,
+                timeout=timeout
+            )
+            
+        elif provider_name == 'openai':
+            from .llm_providers.openai_provider import OpenAIProvider
+            model_name = config.get('llm', 'model_name', fallback='gpt-3.5-turbo')
+            endpoint = config.get('llm', 'endpoint', fallback='https://api.openai.com/v1/chat/completions')
+            timeout = config.getint('llm', 'timeout', fallback=15)
+            return OpenAIProvider(
+                api_key=api_key,
+                model_name=model_name,  # 修正参数名
+                endpoint=endpoint,
+                timeout=timeout
+            )
+            
+        elif provider_name == 'deepseek':
+            from .llm_providers.deepseek import DeepseekProvider
+            model_name = config.get('llm', 'model_name', fallback='deepseek-chat')
+            endpoint = config.get('llm', 'endpoint', fallback='https://api.deepseek.com')
+            timeout = config.getint('llm', 'timeout', fallback=15)
+            return DeepseekProvider(
+                api_key=api_key,
+                model_name=model_name,  # 修正参数名
+                endpoint=endpoint,
+                timeout=timeout
+            )
+            
+        else:
+            raise ValueError(f"不支持的LLM提供商: {provider}")

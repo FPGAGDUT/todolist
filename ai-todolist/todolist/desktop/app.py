@@ -14,10 +14,11 @@ from ..aitask.nlp_parser import NLPTaskParser
 from ..aitask.llm_parser import LLMTaskParser
 from ..aitask.llm_factory import LLMFactory
 from ..aitask.task_parser import AITaskParser
-
+from .settings_dialog import SettingsDialog
+import configparser
 # 开启代理
-os.environ["http_proxy"] = "http://127.0.0.1:10808"
-os.environ["https_proxy"] = "http://127.0.0.1:10808"
+# os.environ["http_proxy"] = "http://127.0.0.1:10808"
+# os.environ["https_proxy"] = "http://127.0.0.1:10808"
 
 class Worker(QRunnable):
     """处理后台任务的工作线程"""
@@ -44,7 +45,14 @@ class Worker(QRunnable):
 class TodoApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        config_path = './config.ini'
+        # config_path = './config.ini'
+        # 获取配置文件路径
+        config_path = self.get_config_path()
+        self.config = self.load_config(config_path)
+
+        # 应用代理设置
+        self.apply_proxy_settings()
+
         self.setWindowTitle("智能 Todo 助手")
         self.setMinimumSize(400, 600)
         # 设置为无边框窗口
@@ -86,6 +94,50 @@ class TodoApp(QtWidgets.QMainWindow):
         self.floating_button = FloatingButton(self)
 
         self.installEventFilter(self)
+
+    def get_config_path(self):
+        """获取配置文件路径"""
+        # 先检查用户主目录下是否有配置文件
+        home_config = os.path.join(os.path.expanduser("~"), ".todolist", "config.ini")
+        if os.path.exists(home_config):
+            return home_config
+            
+        # 再检查当前目录
+        current_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.ini")
+        if os.path.exists(current_config):
+            return current_config
+            
+        # 最后尝试相对路径
+        return "./config.ini"
+
+    def load_config(self, config_path):
+        """加载配置文件"""
+        config = configparser.ConfigParser(allow_no_value=True)
+        try:
+            config.read(config_path, encoding='utf-8')
+            return config
+        except Exception as e:
+            print(f"加载配置失败: {e}")
+            return configparser.ConfigParser()
+
+    def apply_proxy_settings(self):
+        """应用代理设置"""
+        try:
+            if 'llm' in self.config:
+                proxy_host = self.config.get('llm', 'proxy_host', fallback='')
+                proxy_port = self.config.get('llm', 'proxy_port', fallback='')
+                
+                if proxy_host and proxy_port:
+                    proxy = f"{proxy_host}:{proxy_port}"
+                    os.environ["http_proxy"] = proxy
+                    os.environ["https_proxy"] = proxy
+                    print(f"已设置全局代理: {proxy}")
+                else:
+                    os.environ.pop("http_proxy", None)
+                    os.environ.pop("https_proxy", None)
+                    print("未配置代理或已禁用代理")
+        except Exception as e:
+            print(f"应用代理设置失败: {e}")
 
 
     def apply_styles(self):
@@ -932,6 +984,9 @@ class TodoApp(QtWidgets.QMainWindow):
         
         add_task_action = tray_menu.addAction("快速添加")
         add_task_action.triggered.connect(self.quick_add_task)
+
+        settings_action = tray_menu.addAction("设置")
+        settings_action.triggered.connect(self.show_settings)
         
         tray_menu.addSeparator()
         
@@ -942,6 +997,64 @@ class TodoApp(QtWidgets.QMainWindow):
         self.tray_icon.activated.connect(self.tray_icon_activated)
         
         self.tray_icon.show()
+
+    # 添加打开设置的方法
+    def show_settings(self):
+        """显示设置窗口并处理设置变更"""
+        from .settings_dialog import SettingsDialog
+        # 获取更新后的配置
+        old_provider = self.config.get('llm', 'provider', fallback='volcanoark')
+        old_model = self.config.get('llm', 'model_name', fallback='')
+        old_endpoint = self.config.get('llm', 'endpoint', fallback='')
+        dialog = SettingsDialog(self)
+        
+        # 将当前配置传递给对话框
+        dialog.set_config(self.config)
+        
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            # 更新配置
+            self.config = dialog.get_config()
+            
+            # 应用代理设置（已在对话框中完成）
+            
+            # 检查LLM提供商设置是否变更
+            new_provider = self.config.get('llm', 'provider', fallback='volcanoark')
+            new_model = self.config.get('llm', 'model_name', fallback='')
+            new_endpoint = self.config.get('llm', 'endpoint', fallback='')
+
+            print(f"当前LLM设置: {new_provider}/{new_model}")
+            print(f"之前的LLM设置: {old_provider}/{old_model}")
+            print(f"当前LLM端点: {new_endpoint}")
+            
+            # 如果LLM相关设置有变更，重新初始化LLM解析器
+            if (old_provider != new_provider or
+                old_model != new_model or
+                old_endpoint != new_endpoint):
+                print(f"LLM设置已更改，从 {old_provider}/{old_model} 到 {new_provider}/{new_model}")
+                self.reinitialize_llm_parser()
+
+    def reinitialize_llm_parser(self):
+        """重新初始化LLM解析器以应用新的提供商设置"""
+        try:
+            # 保存之前的解析器状态以备需要时使用
+            old_parser = self.llm_parser
+            
+            # 使用当前配置创建新的LLM解析器
+            self.llm_parser = AITaskParser(config=self.config)
+            # self.llm_parser = AITaskParser(config_file=self.config)
+            
+            # 显示成功消息
+            QtWidgets.QMessageBox.information(self, "设置已更新", 
+                f"LLM提供商已切换到: {self.config.get('llm', 'provider')}\n"
+                f"模型: {self.config.get('llm', 'model_name')}")
+            
+            print("LLM解析器已重新初始化")
+        except Exception as e:
+            # 如果初始化失败，显示错误并尝试恢复
+            QtWidgets.QMessageBox.critical(self, "错误", 
+                f"无法初始化新的LLM提供商: {str(e)}\n"
+                "将还原为之前的提供商。")
+            print(f"重新初始化LLM解析器失败: {e}")
 
     def tray_icon_activated(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:

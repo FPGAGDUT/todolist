@@ -16,6 +16,7 @@ class DeepseekProvider(BaseLLMProvider):
                         max_tokens: int = 500,
                         **kwargs) -> Optional[str]:
         """调用DeepSeek API获取对话响应"""
+        print("调用DeepSeek API")
         try:
             response = self.client.chat.completions.create(
                 model=self.model_name,
