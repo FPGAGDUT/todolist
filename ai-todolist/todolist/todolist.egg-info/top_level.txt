@@ -1,0 +1,5 @@
+aitask
+core
+desktop
+utils
+web

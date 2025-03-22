@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: todolist
+Version: 0.1.0
+Summary: A personal todo list application with AI integration for reminders and summaries.
+Author: Chenhaha
+Author-email: your.email@example.com
+Requires-Dist: flask
+Requires-Dist: requests
+Requires-Dist: sqlalchemy
+Requires-Dist: pillow
+Requires-Dist: PyQt5

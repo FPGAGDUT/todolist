@@ -1,0 +1,3 @@
+[console_scripts]
+todolist-desktop = todolist.desktop.app:main
+todolist-server = todolist.server.main:main

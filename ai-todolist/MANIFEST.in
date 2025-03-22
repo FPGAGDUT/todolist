@@ -1,0 +1,2 @@
+include src/desktop/icon/*.png
+include src/desktop/icon/*.svg
