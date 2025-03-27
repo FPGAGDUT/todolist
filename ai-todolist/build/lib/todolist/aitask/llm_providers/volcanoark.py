@@ -16,6 +16,7 @@ class VolcanoArkProvider(BaseLLMProvider):
                         max_tokens: int = 500,
                         **kwargs) -> Optional[str]:
         """调用火山方舟 API 获取对话响应"""
+        print("调用火山方舟API")
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"

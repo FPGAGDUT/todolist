@@ -2,7 +2,7 @@
 import math
 from PyQt5.QtCore import Qt, QTimer, QPoint
 from PyQt5 import QtWidgets, QtCore, QtGui
-
+from .settings_dialog import SettingsDialog
 
 # 添加浮动按钮类
 class FloatingButton(QtWidgets.QWidget):
@@ -17,6 +17,8 @@ class FloatingButton(QtWidgets.QWidget):
             Qt.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
+
+        self.parent_window = parent
         
         # 设置窗口大小
         self.size = 40
@@ -116,6 +118,8 @@ class FloatingButton(QtWidgets.QWidget):
         context_menu = QtWidgets.QMenu(self)
         
         # 添加菜单项
+        settings_action = context_menu.addAction("设置")
+        settings_action.triggered.connect(self.show_settings)
         show_action = context_menu.addAction("打开窗口")
         show_action.triggered.connect(self.show_main_window)
         
@@ -130,6 +134,49 @@ class FloatingButton(QtWidgets.QWidget):
         # 在鼠标位置显示菜单
         context_menu.exec_(event.globalPos())
 
+    def show_settings(self):
+        """显示设置窗口并应用更改"""
+        if hasattr(self.parent_window, 'show_settings'):
+            # 如果主窗口有show_settings方法，直接调用
+            self.parent_window.show_settings()
+        else:
+            # 如果主窗口没有show_settings方法，尝试创建并显示独立的设置对话框
+            try:
+                from .settings_dialog import SettingsDialog
+                dialog = SettingsDialog(self.parent_window)
+                
+                # 尝试设置当前配置（如果主窗口有config属性）
+                if hasattr(self.parent_window, 'config'):
+                    dialog.set_config(self.parent_window.config)
+                    
+                if dialog.exec_() == QtWidgets.QDialog.Accepted:
+                    # 如果用户点击"保存"，尝试更新主窗口的配置
+                    if hasattr(self.parent_window, 'config'):
+                        self.parent_window.config = dialog.get_config()
+                        
+                    # 尝试应用配置
+                    if hasattr(self.parent_window, 'apply_settings'):
+                        self.parent_window.apply_settings()
+                    elif hasattr(self.parent_window, 'apply_proxy_settings'):
+                        self.parent_window.apply_proxy_settings()
+                        
+                    # 尝试重新初始化LLM解析器
+                    if hasattr(self.parent_window, 'reinitialize_llm_parser'):
+                        self.parent_window.reinitialize_llm_parser()
+                    
+                    # 显示提示
+                    QtWidgets.QMessageBox.information(
+                        self, 
+                        "设置已更新",
+                        "设置已保存并应用。"
+                    )
+            except Exception as e:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "错误",
+                    f"打开设置窗口时发生错误: {str(e)}"
+                )
+
     def show_main_window(self):
         """显示主窗口"""
         self.parent().show()
@@ -139,6 +186,14 @@ class FloatingButton(QtWidgets.QWidget):
     def quick_add_task(self):
         """快速添加任务"""
         # 调用父窗口的快速添加任务方法
-        self.parent().quick_add_task()
+        # self.parent().quick_add_task()
+        if hasattr(self.parent_window, 'quick_add_task'):
+            self.parent_window.quick_add_task()
+        else:
+            QtWidgets.QMessageBox.information(
+                self,
+                "功能不可用",
+                "快速添加任务功能暂不可用"
+            )
         # 如果任务已添加，可以考虑显示主窗口
         # self.show_main_window()

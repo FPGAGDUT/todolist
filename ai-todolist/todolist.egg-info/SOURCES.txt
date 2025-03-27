@@ -35,6 +35,7 @@ todolist/desktop/floatingButton.py
 todolist/desktop/local_storage.py
 todolist/desktop/network_manager.py
 todolist/desktop/reminders.py
+todolist/desktop/settings_dialog.py
 todolist/desktop/tray_icon.py
 todolist/server/__init__.py
 todolist/server/main.py
