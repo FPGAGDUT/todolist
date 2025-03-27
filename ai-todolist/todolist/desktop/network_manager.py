@@ -499,3 +499,106 @@ class NetworkManager:
             "pending_operations": len(self.sync_queue),
             "syncing": self.syncing
         }
+    
+
+    def login(self, username, password):
+        """用户登录"""
+        try:
+            print(f"尝试登录用户: {username}")
+            # 构建登录请求
+            login_data = {
+                "username": username,
+                "password": password
+            }
+            
+            # 发送登录请求
+            result = self._make_request('POST', "auth/login", data=login_data)
+            print(f"登录请求结果: {result}")
+            
+            if result.get("success"):
+                data = result.get("data", {})
+                print("登录成功，获取令牌")
+                
+                # 保存认证令牌
+                self.token = data.get('token')
+                if self.token:
+                    self.headers['Authorization'] = f'Bearer {self.token}'
+                
+                # 保存用户ID
+                self.user_id = data.get('user_id')
+                
+                # 设置在线状态
+                self.is_online = True
+                
+                return {
+                    "success": True,
+                    "data": data
+                }
+            else:
+                error_msg = result.get("error", "登录失败")
+                print(f"登录失败: {error_msg}")
+                return {
+                    "success": False,
+                    "error": error_msg
+                }
+                
+        except Exception as e:
+            print(f"登录错误: {str(e)}")
+            return {
+                "success": False,
+                "error": f"网络错误: {str(e)}"
+        }
+
+    def register(self, username, email, password):
+        """用户注册"""
+        try:
+            print(f"尝试注册用户: {username}, {email}")
+            # 构建注册请求
+            register_data = {
+                "username": username,
+                "email": email,
+                "password": password
+            }
+            
+            # 发送注册请求
+            result = self._make_request('POST', "auth/register", data=register_data)
+            print(f"注册请求结果: {result}")
+            
+            if result.get("success"):
+                data = result.get("data", {})
+                print("注册成功")
+                return {
+                    "success": True,
+                    "data": data
+                }
+            else:
+                error_msg = result.get("error", "注册失败")
+                print(f"注册失败: {error_msg}")
+                return {
+                    "success": False,
+                    "error": error_msg
+                }
+                
+        except Exception as e:
+            print(f"注册错误: {str(e)}")
+            return {
+                "success": False,
+                "error": f"网络错误: {str(e)}"
+            }
+
+    def logout(self):
+        """用户登出"""
+        # 清除认证令牌和用户ID
+        self.token = None
+        self.user_id = None
+        
+        # 更新请求头
+        self.headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        # 重置在线状态
+        self.is_online = False
+        
+        # 清除待同步操作
+        self.pending_operations = []

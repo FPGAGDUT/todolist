@@ -1,0 +1,46 @@
+<div class="sidebar-header">
+    <div class="logo">
+        <img src="static/img/logo.svg" alt="AI TodoList Logo" width="28">
+        <h1>AI TodoList</h1>
+    </div>
+    <button id="sidebar-toggle" class="sidebar-toggle">
+        <i class="bi bi-list"></i>
+    </button>
+</div>
+
+<nav class="main-nav">
+    <ul>
+        <li class="active"><a href="dashboard.html"><i class="bi bi-house"></i> 仪表盘</a></li>
+        <li><a href="#" data-filter="today"><i class="bi bi-calendar-day"></i> 今天</a></li>
+        <li><a href="#" data-filter="upcoming"><i class="bi bi-calendar-week"></i> 即将到期</a></li>
+        <li class="nav-divider"></li>
+        <li class="nav-category">分类</li>
+        <!-- 分类列表将由JavaScript动态填充 -->
+        <div id="category-list">
+            <li><a href="#" data-category="工作"><i class="bi bi-briefcase"></i> 工作</a></li>
+            <li><a href="#" data-category="个人"><i class="bi bi-person"></i> 个人</a></li>
+            <li><a href="#" data-category="学习"><i class="bi bi-book"></i> 学习</a></li>
+            <li><a href="#" data-category="其他"><i class="bi bi-three-dots"></i> 其他</a></li>
+        </div>
+        <li class="nav-divider"></li>
+        <li><a href="#" id="manage-categories"><i class="bi bi-gear"></i> 管理分类</a></li>
+    </ul>
+</nav>
+
+<div class="user-info">
+    <div class="user-avatar">
+        <i class="bi bi-person-circle"></i>
+    </div>
+    <div class="user-details">
+        <p class="username" id="username">用户名</p>
+        <div class="user-actions">
+            <a href="#" id="settings-btn" title="设置"><i class="bi bi-gear"></i></a>
+            <a href="#" id="logout-btn" title="退出登录"><i class="bi bi-box-arrow-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div class="sync-status">
+    <span id="sync-icon"><i class="bi bi-check-circle-fill"></i></span>
+    <span id="sync-text">数据已同步</span>
+</div>

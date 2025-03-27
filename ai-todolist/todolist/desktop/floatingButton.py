@@ -84,10 +84,21 @@ class FloatingButton(QtWidgets.QWidget):
         self.update()
 
     def mousePressEvent(self, event):
-        """鼠标按下事件，用于开始拖动"""
-        if event.button() == Qt.LeftButton:
-            self.pressing = True
-            self.offset = event.pos()
+        """处理鼠标点击事件"""
+        # 检查父窗口是否已登录
+        if not self.parent().user_info:
+            # 如果未登录，显示登录窗口
+            self.hide()
+            self.parent().show_login_window()
+        else:
+            # 已登录，显示主窗口
+            self.hide()
+            self.parent().show()
+            self.parent().activateWindow()
+        
+        # 处理拖动事件
+        self.oldPos = event.globalPos()
+        self.pressing = True
 
     def mouseMoveEvent(self, event):
         """鼠标移动事件，用于拖动窗口"""

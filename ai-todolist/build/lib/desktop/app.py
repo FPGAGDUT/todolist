@@ -14,32 +14,15 @@ from ..aitask.nlp_parser import NLPTaskParser
 from ..aitask.llm_parser import LLMTaskParser
 from ..aitask.llm_factory import LLMFactory
 from ..aitask.task_parser import AITaskParser
+from .worker import Worker
+from .login import LoginWindow
+
 
 # 开启代理
 os.environ["http_proxy"] = "http://127.0.0.1:10808"
 os.environ["https_proxy"] = "http://127.0.0.1:10808"
 
-class Worker(QRunnable):
-    """处理后台任务的工作线程"""
-    
-    class Signals(QObject):
-        finished = pyqtSignal(object)
-        error = pyqtSignal(Exception)
-    
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = Worker.Signals()
-    
-    def run(self):
-        """执行工作函数"""
-        try:
-            result = self.fn(*self.args, **self.kwargs)
-            self.signals.finished.emit(result)
-        except Exception as e:
-            self.signals.error.emit(e)
+
 
 class TodoApp(QtWidgets.QMainWindow):
     def __init__(self):
@@ -54,6 +37,10 @@ class TodoApp(QtWidgets.QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.threadpool = QThreadPool()
 
+        # 初始化用户信息
+        self.user_info = None
+        self.is_offline_mode = False
+
         # 初始化网络管理器 - 修改为本地优先模式
         self.network_manager = NetworkManager(
             base_url="http://localhost:8083/v1", 
@@ -61,6 +48,8 @@ class TodoApp(QtWidgets.QMainWindow):
             local_first=True  # 添加本地优先标志
         )
         self.subtask_inference_enabled = True
+
+        
 
         # api_key = os.environ.get("DEEPSEEK_API_KEY", "")  # 从环境变量获取API密钥
         # print(f"API Key: {api_key}")
@@ -86,6 +75,9 @@ class TodoApp(QtWidgets.QMainWindow):
         self.floating_button = FloatingButton(self)
 
         self.installEventFilter(self)
+
+        # 添加用户登录逻辑
+        self.show_login_window()
 
 
     def apply_styles(self):
@@ -206,6 +198,200 @@ class TodoApp(QtWidgets.QMainWindow):
                 border-bottom-right-radius: 10px;
             }
         """)
+
+    def show_login_window(self):
+        """显示登录窗口"""
+        print("正在显示登录窗口...")
+        # 创建登录窗口
+        try:
+            self.login_window = LoginWindow(self.network_manager)
+            
+            # 连接登录成功信号
+            self.login_window.login_successful.connect(self.on_login_successful)
+            
+            # 隐藏主窗口
+            self.hide()
+            
+            # 显示登录窗口
+            self.login_window.show()
+            print("登录窗口已显示")
+        except Exception as e:
+            print(f"显示登录窗口时出错: {str(e)}")
+
+    def on_login_successful(self, user_data):
+        """处理登录成功事件"""
+        # 保存用户信息
+        self.user_info = user_data
+        self.is_offline_mode = user_data.get('is_offline', False)
+        
+        # 更新UI以显示用户信息
+        self.update_user_info_display()
+        
+        # 加载任务
+        if not self.is_offline_mode:
+            self.load_tasks()
+        
+        # 显示主窗口
+        self.show()
+    
+    def update_user_info_display(self):
+        """更新UI显示用户信息"""
+        # 找到用户名标签（如果有）
+        username_label = self.findChild(QtWidgets.QLabel, "username_label")
+        if username_label:
+            username_label.setText(self.user_info.get('username', '用户'))
+        else:
+            # 创建用户信息区域
+            user_info_layout = QtWidgets.QHBoxLayout()
+            
+            # 用户头像
+            user_avatar = QtWidgets.QLabel()
+            user_avatar.setFixedSize(32, 32)
+            user_avatar.setStyleSheet("""
+                background-color: #dee2e6;
+                border-radius: 16px;
+                color: #6c757d;
+                font-weight: bold;
+                qproperty-alignment: AlignCenter;
+            """)
+            
+            # 提取用户名首字母作为头像
+            username = self.user_info.get('username', '用户')
+            user_avatar.setText(username[0].upper())
+            
+            # 用户名标签
+            username_label = QtWidgets.QLabel(username)
+            username_label.setObjectName("username_label")
+            username_label.setStyleSheet("""
+                font-weight: bold;
+                color: #495057;
+            """)
+            
+            # 添加到布局
+            user_info_layout.addWidget(user_avatar)
+            user_info_layout.addWidget(username_label)
+            
+            # 找到合适的位置添加用户信息
+            # 这里假设我们添加到标题和日期布局中，您可能需要根据实际UI调整
+            title_date_layout = None
+            
+            for i in range(self.centralWidget().layout().count()):
+                item = self.centralWidget().layout().itemAt(i).widget()
+                if item and item.objectName() == "main_frame":
+                    for j in range(item.layout().count()):
+                        sub_item = item.layout().itemAt(j)
+                        if isinstance(sub_item, QtWidgets.QHBoxLayout):
+                            # 假设第一个水平布局是标题布局
+                            title_date_layout = sub_item
+                            break
+                    break
+            
+            if title_date_layout:
+                # 添加伸展因子和用户信息
+                title_date_layout.addStretch()
+                title_date_layout.addLayout(user_info_layout)
+        
+        # 更新连接状态显示
+        if self.is_offline_mode:
+            self.connection_status.setText("离线模式")
+            self.connection_status.setStyleSheet("""
+                color: #ffc107;
+                font-size: 12px;
+                padding: 2px 8px;
+                border: 1px solid #ffc107;
+                border-radius: 10px;
+            """)
+            
+            # 禁用同步按钮
+            self.sync_btn.setEnabled(False)
+            self.sync_btn.setText("离线使用中")
+    
+    def setup_user_menu(self):
+        """设置用户菜单"""
+        # 创建用户菜单
+        self.user_menu = QtWidgets.QMenu(self)
+        
+        # 添加菜单项
+        profile_action = self.user_menu.addAction("个人资料")
+        settings_action = self.user_menu.addAction("设置")
+        
+        self.user_menu.addSeparator()
+        
+        logout_action = self.user_menu.addAction("登出")
+        
+        # 连接信号
+        profile_action.triggered.connect(self.show_profile)
+        settings_action.triggered.connect(self.show_settings)
+        logout_action.triggered.connect(self.logout)
+        
+        # 创建用户菜单按钮
+        user_menu_btn = QtWidgets.QPushButton()
+        user_menu_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+            }
+        """)
+        user_menu_btn.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_TitleBarMenuButton))
+        
+        # 连接菜单显示
+        user_menu_btn.clicked.connect(self.show_user_menu)
+        
+        # 添加到用户信息区域
+        # 您需要根据实际UI结构找到合适的位置添加此按钮
+    
+    def show_user_menu(self):
+        """显示用户菜单"""
+        button = self.sender()
+        self.user_menu.exec_(button.mapToGlobal(QtCore.QPoint(0, button.height())))
+    
+    def show_profile(self):
+        """显示用户资料"""
+        QtWidgets.QMessageBox.information(
+            self, "用户资料", 
+            f"用户名: {self.user_info.get('username')}\nID: {self.user_info.get('user_id')}"
+        )
+    
+    def show_settings(self):
+        """显示设置"""
+        # 实现设置对话框
+        pass
+    
+    def logout(self):
+        """登出当前用户"""
+        # 询问用户是否确定要登出
+        reply = QtWidgets.QMessageBox.question(
+            self, "确认登出", 
+            "确定要登出当前账户吗？未同步的更改可能会丢失。",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No
+        )
+        
+        if reply == QtWidgets.QMessageBox.Yes:
+            # 清除用户信息
+            self.user_info = None
+            
+            # 清除本地token
+            self.network_manager.logout()
+            
+            # 隐藏主窗口
+            self.hide()
+            
+            # 隐藏浮动按钮
+            self.floating_button.hide()
+            
+            # 停止提醒系统
+            if self.reminder:
+                self.reminder.stop()
+            
+            # 保存本地数据
+            self.network_manager.local_storage.save_data()
+            
+            # 显示登录窗口
+            self.show_login_window()
 
     def show_task_breakdown(self, task_text):
         """显示任务拆分对话框"""
@@ -1985,14 +2171,27 @@ class TodoApp(QtWidgets.QMainWindow):
         
         super().changeEvent(event)
 
+# def main():
+#     app = QtWidgets.QApplication(sys.argv)
+#     app.setQuitOnLastWindowClosed(False)  # 关闭窗口不退出程序
+    
+#     todo_app = TodoApp()
+#      # 从服务器或本地存储加载任务，而不是添加示例任务
+#     # todo_app.load_tasks()
+#     todo_app.show()
+
+#     app.aboutToQuit.connect(lambda: todo_app.network_manager.local_storage.save_data())
+    
+#     sys.exit(app.exec_())
+
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)  # 关闭窗口不退出程序
     
     todo_app = TodoApp()
-     # 从服务器或本地存储加载任务，而不是添加示例任务
-    # todo_app.load_tasks()
-    todo_app.show()
+    
+    # 现在会先显示登录窗口，登录成功后再显示主窗口
 
     app.aboutToQuit.connect(lambda: todo_app.network_manager.local_storage.save_data())
     

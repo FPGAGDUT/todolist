@@ -1,46 +1,413 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <title>任务分析 - AI TodoList</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- 添加图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <header>
-        <h1>Your Todo Dashboard</h1>
-        <nav>
-            <a href="{{ url_for('index') }}">Home</a>
-            <a href="{{ url_for('projects') }}">Projects</a>
-        </nav>
-    </header>
-    <main>
-        <section id="todo-list">
-            <h2>Your Todo Items</h2>
-            <ul>
-                <!-- Todo items will be dynamically inserted here -->
-                {% for todo in todos %}
-                    <li>{{ todo.title }} - {{ todo.status }}</li>
-                {% endfor %}
-            </ul>
-        </section>
-        <section id="summary">
-            <h2>Recent Activities</h2>
-            <p>{{ summary }}</p>
-        </section>
-        <section id="suggestions">
-            <h2>Suggestions</h2>
-            <ul>
-                <!-- Suggestions will be dynamically inserted here -->
-                {% for suggestion in suggestions %}
-                    <li>{{ suggestion }}</li>
-                {% endfor %}
-            </ul>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2023 Your Todo List Application</p>
-    </footer>
-    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+<body class="app-body">
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="static/img/logo.svg" alt="AI TodoList Logo" width="28">
+                    <h1>AI TodoList</h1>
+                </div>
+                <button id="sidebar-toggle" class="sidebar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+            </div>
+            
+            <nav class="main-nav">
+                <ul>
+                    <li class="active"><a href="#" data-view="overview"><i class="bi bi-house"></i> 概览</a></li>
+                    <li><a href="#" data-view="all-tasks"><i class="bi bi-list-check"></i> 所有任务</a></li>
+                    <li><a href="#" data-view="today"><i class="bi bi-calendar-day"></i> 今日任务</a></li>
+                    <li><a href="#" data-view="upcoming"><i class="bi bi-calendar-week"></i> 未来任务</a></li>
+                    <li><a href="#" data-view="analytics"><i class="bi bi-bar-chart"></i> 数据分析</a></li>
+                    <li class="nav-divider"></li>
+                    <li class="nav-category">任务分类</li>
+                    <li><a href="#" data-category="工作"><i class="bi bi-briefcase"></i> 工作</a></li>
+                    <li><a href="#" data-category="个人"><i class="bi bi-person"></i> 个人</a></li>
+                    <li><a href="#" data-category="学习"><i class="bi bi-book"></i> 学习</a></li>
+                    <li><a href="#" data-category="其他"><i class="bi bi-three-dots"></i> 其他</a></li>
+                </ul>
+            </nav>
+            
+            <div class="app-info">
+                <p><i class="bi bi-info-circle"></i> 使用APP添加新任务</p>
+                <div class="qr-code">
+                    <img src="static/img/app-qr.png" alt="下载APP" width="80">
+                    <small>扫码下载APP</small>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="user-details">
+                    <p class="username" id="username">用户名</p>
+                    <div class="user-actions">
+                        <a href="#" id="settings-btn" title="设置"><i class="bi bi-gear"></i></a>
+                        <a href="#" id="logout-btn" title="退出"><i class="bi bi-box-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <!-- 概览视图 -->
+            <section id="overview-view" class="content-view active">
+                <header class="content-header">
+                    <h2>任务概览</h2>
+                    <div class="date-range">
+                        <button class="btn btn-outline" id="refresh-data">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新数据
+                        </button>
+                        <span id="last-sync">上次同步: 刚刚</span>
+                    </div>
+                </header>
+                
+                <div class="dashboard-grid">
+                    <!-- 统计卡片行 -->
+                    <div class="stats-row">
+                        <div class="stat-card" id="today-count">
+                            <div class="stat-icon">
+                                <i class="bi bi-calendar-check"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>今日任务</h3>
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">待完成</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card" id="week-count">
+                            <div class="stat-icon">
+                                <i class="bi bi-calendar-week"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>本周任务</h3>
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">待完成</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card" id="completed-count">
+                            <div class="stat-icon">
+                                <i class="bi bi-check2-all"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>已完成</h3>
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">近7天</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card" id="completion-rate">
+                            <div class="stat-icon">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>完成率</h3>
+                                <div class="stat-number">0%</div>
+                                <div class="stat-label">近30天</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 紧急任务 -->
+                    <div class="card" id="urgent-tasks">
+                        <div class="card-header">
+                            <h3><i class="bi bi-exclamation-circle"></i> 需要立即处理</h3>
+                        </div>
+                        <div class="card-content">
+                            <ul class="task-preview-list" id="urgent-task-list">
+                                <!-- 紧急任务列表 -->
+                                <li class="empty-message">当前没有紧急任务</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- 今日任务 -->
+                    <div class="card" id="today-tasks">
+                        <div class="card-header">
+                            <h3><i class="bi bi-calendar-day"></i> 今日任务</h3>
+                            <a href="#" class="view-all" data-view="today">查看全部</a>
+                        </div>
+                        <div class="card-content">
+                            <ul class="task-preview-list" id="today-task-list">
+                                <!-- 今日任务列表 -->
+                                <li class="empty-message">今天没有任务安排</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- 每周任务完成情况 -->
+                    <div class="card" id="weekly-completion">
+                        <div class="card-header">
+                            <h3><i class="bi bi-bar-chart"></i> 每周任务完成情况</h3>
+                        </div>
+                        <div class="card-content chart-container">
+                            <canvas id="weekly-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 按类别分布 -->
+                    <div class="card" id="category-distribution">
+                        <div class="card-header">
+                            <h3><i class="bi bi-pie-chart"></i> 任务分类分布</h3>
+                        </div>
+                        <div class="card-content chart-container">
+                            <canvas id="category-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 所有任务视图 -->
+            <section id="all-tasks-view" class="content-view">
+                <header class="content-header">
+                    <h2>所有任务</h2>
+                    <div class="task-filters">
+                        <select id="status-filter" class="form-select">
+                            <option value="all">全部状态</option>
+                            <option value="pending">待处理</option>
+                            <option value="completed">已完成</option>
+                        </select>
+                        <select id="sort-by" class="form-select">
+                            <option value="date-asc">日期 (从早到晚)</option>
+                            <option value="date-desc">日期 (从晚到早)</option>
+                            <option value="priority">优先级</option>
+                            <option value="category">类别</option>
+                        </select>
+                    </div>
+                </header>
+                
+                <div class="task-list-container">
+                    <div id="complete-task-list" class="task-list">
+                        <!-- 任务列表将通过JavaScript动态生成 -->
+                        <div class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>加载任务中...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 今日任务视图 -->
+            <section id="today-view" class="content-view">
+                <header class="content-header">
+                    <h2>今日任务</h2>
+                    <div class="date-display" id="today-date">
+                        2025年3月27日 星期四
+                    </div>
+                </header>
+                
+                <div class="task-list-container">
+                    <div id="today-tasks-list" class="task-list">
+                        <!-- 今日任务列表将通过JavaScript动态生成 -->
+                        <div class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>加载任务中...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="productivity-tips">
+                    <h4><i class="bi bi-lightbulb"></i> 今日建议</h4>
+                    <p id="daily-tip">专注于最重要的3项任务，确保它们今天完成。</p>
+                </div>
+            </section>
+            
+            <!-- 未来任务视图 -->
+            <section id="upcoming-view" class="content-view">
+                <header class="content-header">
+                    <h2>未来任务</h2>
+                    <div class="time-range-filter">
+                        <button class="btn btn-sm active" data-range="week">本周</button>
+                        <button class="btn btn-sm" data-range="month">本月</button>
+                        <button class="btn btn-sm" data-range="all">全部</button>
+                    </div>
+                </header>
+                
+                <div class="upcoming-calendar" id="task-calendar">
+                    <!-- 日历视图将通过JavaScript动态生成 -->
+                </div>
+                
+                <div class="upcoming-tasks-list" id="upcoming-tasks-container">
+                    <!-- 未来任务列表将通过JavaScript动态生成，按日期分组 -->
+                </div>
+            </section>
+            
+            <!-- 数据分析视图 -->
+            <section id="analytics-view" class="content-view">
+                <header class="content-header">
+                    <h2>任务分析</h2>
+                    <div class="date-range-picker">
+                        <select id="analytics-range" class="form-select">
+                            <option value="7">过去7天</option>
+                            <option value="30" selected>过去30天</option>
+                            <option value="90">过去90天</option>
+                            <option value="365">过去一年</option>
+                        </select>
+                    </div>
+                </header>
+                
+                <div class="analytics-grid">
+                    <!-- 完成率趋势 -->
+                    <div class="analytics-card wide-card">
+                        <h3>任务完成率趋势</h3>
+                        <div class="chart-container">
+                            <canvas id="completion-trend-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 任务分布 -->
+                    <div class="analytics-card">
+                        <h3>任务分类比例</h3>
+                        <div class="chart-container">
+                            <canvas id="category-pie-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 每日高效时段 -->
+                    <div class="analytics-card">
+                        <h3>每日高效时段</h3>
+                        <div class="chart-container">
+                            <canvas id="productivity-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 任务完成统计 -->
+                    <div class="analytics-card wide-card">
+                        <h3>任务统计</h3>
+                        <div class="stats-table-container">
+                            <table class="stats-table">
+                                <thead>
+                                    <tr>
+                                        <th>类别</th>
+                                        <th>待处理</th>
+                                        <th>已完成</th>
+                                        <th>完成率</th>
+                                        <th>平均耗时(天)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stats-table-body">
+                                    <!-- 统计数据将通过JavaScript动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 生产力洞察 -->
+                    <div class="analytics-card">
+                        <h3>生产力洞察</h3>
+                        <div class="insights-list" id="productivity-insights">
+                            <!-- 洞察内容将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- 任务详情侧栏 -->
+        <div class="task-details-panel" id="task-details">
+            <div class="panel-header">
+                <h3>任务详情</h3>
+                <button id="close-details" class="btn-icon"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="panel-content">
+                <!-- 任务详情将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 设置模态框 -->
+    <div id="settings-modal" class="modal-container" style="display:none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>用户设置</h3>
+                <button class="btn-close" id="settings-modal-close"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="general">常规设置</button>
+                    <button class="tab-btn" data-tab="account">账户设置</button>
+                    <button class="tab-btn" data-tab="sync">同步与备份</button>
+                </div>
+                
+                <div class="tab-content" id="general-tab">
+                    <div class="form-group">
+                        <label for="theme-select">主题</label>
+                        <select id="theme-select" class="form-select">
+                            <option value="light">浅色</option>
+                            <option value="dark">深色</option>
+                            <option value="system">跟随系统</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="language-select">语言</label>
+                        <select id="language-select" class="form-select">
+                            <option value="zh-CN">简体中文</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="account-tab" style="display:none;">
+                    <div class="form-group">
+                        <label for="current-password">当前密码</label>
+                        <input type="password" id="current-password" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-password">新密码</label>
+                        <input type="password" id="new-password" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm-password">确认新密码</label>
+                        <input type="password" id="confirm-password" class="form-control">
+                    </div>
+                    
+                    <button id="change-password-btn" class="btn btn-primary">更改密码</button>
+                </div>
+                
+                <div class="tab-content" id="sync-tab" style="display:none;">
+                    <div class="last-sync-info">
+                        <p>上次同步时间: <span id="last-sync-time">刚刚</span></p>
+                    </div>
+                    
+                    <div class="sync-actions">
+                        <button id="sync-now-btn" class="btn btn-primary">立即同步</button>
+                        <button id="export-data-btn" class="btn btn-outline">导出数据</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-check">
+                            <input type="checkbox" id="auto-sync" checked>
+                            <span>启用自动同步</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="settings-cancel" class="btn btn-secondary">取消</button>
+                <button id="settings-save" class="btn btn-primary">保存设置</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="static/js/api.js"></script>
+    <script src="static/js/auth.js"></script>
+    <script src="static/js/dashboard.js"></script>
+    <script src="static/js/settings.js"></script>
 </body>
 </html>

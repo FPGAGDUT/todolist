@@ -1,0 +1,278 @@
+:root {
+    --primary-color: #4a6bdf;
+    --primary-light: #e8efff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --body-color: #f5f7fa;
+    --text-color: #212529;
+    --border-color: #dee2e6;
+    --shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    --border-radius: 4px;
+}
+
+body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.5;
+    color: var(--text-color);
+    background-color: var(--body-color);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+    flex: 1;
+}
+
+.app-header {
+    padding: 20px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo h1 {
+    font-size: 24px;
+    margin-left: 12px;
+    font-weight: 600;
+}
+
+/* 着陆页样式 */
+.landing-page .main-content {
+    padding: 60px 0;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.hero h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
+    color: var(--dark-color);
+}
+
+.hero p {
+    font-size: 18px;
+    max-width: 800px;
+    margin: 0 auto 30px;
+    color: var(--secondary-color);
+}
+
+.cta-buttons {
+    margin-top: 30px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #3a5bc7;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background-color: var(--light-color);
+    color: var(--dark-color);
+    margin-left: 12px;
+}
+
+.btn-secondary:hover {
+    background-color: #e2e6ea;
+    text-decoration: none;
+}
+
+.features {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 60px;
+}
+
+.feature-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    width: calc(33.333% - 30px);
+    min-width: 280px;
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.feature-card h3 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.feature-card p {
+    color: var(--secondary-color);
+    font-size: 15px;
+}
+
+/* 登录和注册表单样式 */
+.auth-container {
+    max-width: 400px;
+    margin: 60px auto;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-header h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    color: var(--dark-color);
+}
+
+.auth-header p {
+    color: var(--secondary-color);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 15px;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(74, 107, 223, 0.1);
+}
+
+.form-text {
+    font-size: 13px;
+    color: var(--secondary-color);
+    margin-top: 6px;
+}
+
+.form-check {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.form-check input {
+    margin-right: 10px;
+}
+
+.form-check label {
+    font-size: 14px;
+}
+
+.alert {
+    padding: 12px 15px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 25px;
+    font-size: 14px;
+    color: var(--secondary-color);
+}
+
+.auth-footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .features {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .feature-card {
+        width: 100%;
+    }
+    
+    .hero h2 {
+        font-size: 30px;
+    }
+    
+    .hero p {
+        font-size: 16px;
+    }
+}

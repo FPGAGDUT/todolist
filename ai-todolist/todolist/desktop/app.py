@@ -14,45 +14,20 @@ from ..aitask.nlp_parser import NLPTaskParser
 from ..aitask.llm_parser import LLMTaskParser
 from ..aitask.llm_factory import LLMFactory
 from ..aitask.task_parser import AITaskParser
-from .settings_dialog import SettingsDialog
-import configparser
-# 开启代理
-# os.environ["http_proxy"] = "http://127.0.0.1:10808"
-# os.environ["https_proxy"] = "http://127.0.0.1:10808"
+from .worker import Worker
+from .login import LoginWindow
 
-class Worker(QRunnable):
-    """处理后台任务的工作线程"""
-    
-    class Signals(QObject):
-        finished = pyqtSignal(object)
-        error = pyqtSignal(Exception)
-    
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = Worker.Signals()
-    
-    def run(self):
-        """执行工作函数"""
-        try:
-            result = self.fn(*self.args, **self.kwargs)
-            self.signals.finished.emit(result)
-        except Exception as e:
-            self.signals.error.emit(e)
+
+# 开启代理
+os.environ["http_proxy"] = "http://127.0.0.1:10808"
+os.environ["https_proxy"] = "http://127.0.0.1:10808"
+
+
 
 class TodoApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        # config_path = './config.ini'
-        # 获取配置文件路径
-        config_path = self.get_config_path()
-        self.config = self.load_config(config_path)
-
-        # 应用代理设置
-        self.apply_proxy_settings()
-
+        config_path = './config.ini'
         self.setWindowTitle("智能 Todo 助手")
         self.setMinimumSize(400, 600)
         # 设置为无边框窗口
@@ -62,6 +37,13 @@ class TodoApp(QtWidgets.QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.threadpool = QThreadPool()
 
+        # 初始化用户信息
+        self.user_info = None
+        self.is_offline_mode = False
+        
+        # 将浮动按钮设为None，登录成功后再创建
+        self.floating_button = None
+
         # 初始化网络管理器 - 修改为本地优先模式
         self.network_manager = NetworkManager(
             base_url="http://localhost:8083/v1", 
@@ -69,6 +51,8 @@ class TodoApp(QtWidgets.QMainWindow):
             local_first=True  # 添加本地优先标志
         )
         self.subtask_inference_enabled = True
+
+        
 
         # api_key = os.environ.get("DEEPSEEK_API_KEY", "")  # 从环境变量获取API密钥
         # print(f"API Key: {api_key}")
@@ -90,54 +74,14 @@ class TodoApp(QtWidgets.QMainWindow):
         self.init_ui()
         
         # 设置系统托盘
-        self.setup_tray_icon()
-        self.floating_button = FloatingButton(self)
+        
+        # self.floating_button = FloatingButton(self)
+        self.floating_button = None
 
         self.installEventFilter(self)
-
-    def get_config_path(self):
-        """获取配置文件路径"""
-        # 先检查用户主目录下是否有配置文件
-        home_config = os.path.join(os.path.expanduser("~"), ".todolist", "config.ini")
-        if os.path.exists(home_config):
-            return home_config
-            
-        # 再检查当前目录
-        current_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.ini")
-        if os.path.exists(current_config):
-            return current_config
-            
-        # 最后尝试相对路径
-        return "./config.ini"
-
-    def load_config(self, config_path):
-        """加载配置文件"""
-        config = configparser.ConfigParser(allow_no_value=True)
-        try:
-            config.read(config_path, encoding='utf-8')
-            return config
-        except Exception as e:
-            print(f"加载配置失败: {e}")
-            return configparser.ConfigParser()
-
-    def apply_proxy_settings(self):
-        """应用代理设置"""
-        try:
-            if 'llm' in self.config:
-                proxy_host = self.config.get('llm', 'proxy_host', fallback='')
-                proxy_port = self.config.get('llm', 'proxy_port', fallback='')
-                
-                if proxy_host and proxy_port:
-                    proxy = f"{proxy_host}:{proxy_port}"
-                    os.environ["http_proxy"] = proxy
-                    os.environ["https_proxy"] = proxy
-                    print(f"已设置全局代理: {proxy}")
-                else:
-                    os.environ.pop("http_proxy", None)
-                    os.environ.pop("https_proxy", None)
-                    print("未配置代理或已禁用代理")
-        except Exception as e:
-            print(f"应用代理设置失败: {e}")
+        self.setup_tray_icon()
+        # 添加用户登录逻辑
+        self.show_login_window()
 
 
     def apply_styles(self):
@@ -258,6 +202,221 @@ class TodoApp(QtWidgets.QMainWindow):
                 border-bottom-right-radius: 10px;
             }
         """)
+
+    def show_login_window(self):
+        """显示登录窗口"""
+        print("正在显示登录窗口...")
+        # 创建登录窗口
+        try:
+            self.login_window = LoginWindow(self.network_manager, parent=self)
+            
+            # 连接登录成功信号
+            self.login_window.login_successful.connect(self.on_login_successful)
+            
+            # 隐藏主窗口
+            self.hide()
+            
+            # 显示登录窗口
+            self.login_window.show()
+            print("登录窗口已显示")
+        except Exception as e:
+            print(f"显示登录窗口时出错: {str(e)}")
+
+    def on_login_successful(self, user_data):
+        """处理登录成功事件"""
+        # 保存用户信息
+        self.user_info = user_data
+        self.is_offline_mode = user_data.get('is_offline', False)
+        
+        # 更新UI以显示用户信息
+        self.update_user_info_display()
+        
+        # 加载任务
+        if not self.is_offline_mode:
+            self.load_tasks()
+        
+        # 创建浮动按钮
+        if self.floating_button is None:
+            self.floating_button = FloatingButton(self)
+            self.floating_button.hide()  # 初始状态下隐藏
+        
+        # 显示主窗口
+        self.show()
+    
+    def update_user_info_display(self):
+        """更新UI显示用户信息"""
+        # 找到用户名标签（如果有）
+        username_label = self.findChild(QtWidgets.QLabel, "username_label")
+        if username_label:
+            username_label.setText(self.user_info.get('username', '用户'))
+        else:
+            # 创建用户信息区域
+            user_info_layout = QtWidgets.QHBoxLayout()
+            
+            # 用户头像
+            user_avatar = QtWidgets.QLabel()
+            user_avatar.setFixedSize(32, 32)
+            user_avatar.setStyleSheet("""
+                background-color: #dee2e6;
+                border-radius: 16px;
+                color: #6c757d;
+                font-weight: bold;
+                qproperty-alignment: AlignCenter;
+            """)
+            
+            # 提取用户名首字母作为头像
+            username = self.user_info.get('username', '用户')
+            user_avatar.setText(username[0].upper())
+            
+            # 用户名标签
+            username_label = QtWidgets.QLabel(username)
+            username_label.setObjectName("username_label")
+            username_label.setStyleSheet("""
+                font-weight: bold;
+                color: #495057;
+            """)
+            
+            # 添加到布局
+            user_info_layout.addWidget(user_avatar)
+            user_info_layout.addWidget(username_label)
+            
+            # 找到合适的位置添加用户信息
+            # 这里假设我们添加到标题和日期布局中，您可能需要根据实际UI调整
+            title_date_layout = None
+            
+            for i in range(self.centralWidget().layout().count()):
+                item = self.centralWidget().layout().itemAt(i).widget()
+                if item and item.objectName() == "main_frame":
+                    for j in range(item.layout().count()):
+                        sub_item = item.layout().itemAt(j)
+                        if isinstance(sub_item, QtWidgets.QHBoxLayout):
+                            # 假设第一个水平布局是标题布局
+                            title_date_layout = sub_item
+                            break
+                    break
+            
+            if title_date_layout:
+                # 添加伸展因子和用户信息
+                title_date_layout.addStretch()
+                title_date_layout.addLayout(user_info_layout)
+        
+        # 更新连接状态显示
+        if self.is_offline_mode:
+            self.connection_status.setText("离线模式")
+            self.connection_status.setStyleSheet("""
+                color: #ffc107;
+                font-size: 12px;
+                padding: 2px 8px;
+                border: 1px solid #ffc107;
+                border-radius: 10px;
+            """)
+            
+            # 禁用同步按钮
+            self.sync_btn.setEnabled(False)
+            self.sync_btn.setText("离线使用中")
+    
+    def setup_user_menu(self):
+        """设置用户菜单"""
+        # 创建用户菜单
+        self.user_menu = QtWidgets.QMenu(self)
+        
+        # 添加菜单项
+        profile_action = self.user_menu.addAction("个人资料")
+        settings_action = self.user_menu.addAction("设置")
+        
+        # 添加取消自动登录选项
+        self.user_menu.addSeparator()
+        disable_auto_login_action = self.user_menu.addAction("取消自动登录")
+        disable_auto_login_action.triggered.connect(self.disable_auto_login)
+        
+        self.user_menu.addSeparator()
+        
+        logout_action = self.user_menu.addAction("登出")
+        
+        # 连接信号
+        profile_action.triggered.connect(self.show_profile)
+        settings_action.triggered.connect(self.show_settings)
+        logout_action.triggered.connect(self.logout)
+        
+        # 创建用户菜单按钮
+        user_menu_btn = QtWidgets.QPushButton()
+        user_menu_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+            }
+        """)
+        user_menu_btn.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_TitleBarMenuButton))
+        
+        # 连接菜单显示
+        user_menu_btn.clicked.connect(self.show_user_menu)
+        
+        # 添加到用户信息区域
+        # 您需要根据实际UI结构找到合适的位置添加此按钮
+
+    def disable_auto_login(self):
+        """取消自动登录设置"""
+        settings = QtCore.QSettings("AITodoList", "UserPrefs")
+        settings.setValue("autoLogin", False)
+        
+        QtWidgets.QMessageBox.information(
+            self, 
+            "设置已更新", 
+            "已取消自动登录设置。下次启动时将需要手动登录。"
+        )
+    
+    def show_user_menu(self):
+        """显示用户菜单"""
+        button = self.sender()
+        self.user_menu.exec_(button.mapToGlobal(QtCore.QPoint(0, button.height())))
+    
+    def show_profile(self):
+        """显示用户资料"""
+        QtWidgets.QMessageBox.information(
+            self, "用户资料", 
+            f"用户名: {self.user_info.get('username')}\nID: {self.user_info.get('user_id')}"
+        )
+    
+    def show_settings(self):
+        """显示设置"""
+        # 实现设置对话框
+        pass
+    
+    def logout(self):
+        """登出当前用户"""
+        # 询问用户是否确定要登出
+        reply = QtWidgets.QMessageBox.question(
+            self, "确认登出", 
+            "确定要登出当前账户吗？未同步的更改可能会丢失。",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No
+        )
+        
+        if reply == QtWidgets.QMessageBox.Yes:
+            # 清除用户信息
+            self.user_info = None
+            
+            # 清除本地token
+            self.network_manager.logout()
+            
+            # 隐藏主窗口
+            self.hide()
+            
+            # 隐藏浮动按钮
+            self.floating_button.hide()
+            
+            # 停止提醒系统
+            if self.reminder:
+                self.reminder.stop()
+            
+            # 保存本地数据
+            self.network_manager.local_storage.save_data()
+            
+            # 显示登录窗口
+            self.show_login_window()
 
     def show_task_breakdown(self, task_text):
         """显示任务拆分对话框"""
@@ -984,9 +1143,6 @@ class TodoApp(QtWidgets.QMainWindow):
         
         add_task_action = tray_menu.addAction("快速添加")
         add_task_action.triggered.connect(self.quick_add_task)
-
-        settings_action = tray_menu.addAction("设置")
-        settings_action.triggered.connect(self.show_settings)
         
         tray_menu.addSeparator()
         
@@ -998,64 +1154,6 @@ class TodoApp(QtWidgets.QMainWindow):
         
         self.tray_icon.show()
 
-    # 添加打开设置的方法
-    def show_settings(self):
-        """显示设置窗口并处理设置变更"""
-        from .settings_dialog import SettingsDialog
-        # 获取更新后的配置
-        old_provider = self.config.get('llm', 'provider', fallback='volcanoark')
-        old_model = self.config.get('llm', 'model_name', fallback='')
-        old_endpoint = self.config.get('llm', 'endpoint', fallback='')
-        dialog = SettingsDialog(self)
-        
-        # 将当前配置传递给对话框
-        dialog.set_config(self.config)
-        
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
-            # 更新配置
-            self.config = dialog.get_config()
-            
-            # 应用代理设置（已在对话框中完成）
-            
-            # 检查LLM提供商设置是否变更
-            new_provider = self.config.get('llm', 'provider', fallback='volcanoark')
-            new_model = self.config.get('llm', 'model_name', fallback='')
-            new_endpoint = self.config.get('llm', 'endpoint', fallback='')
-
-            print(f"当前LLM设置: {new_provider}/{new_model}")
-            print(f"之前的LLM设置: {old_provider}/{old_model}")
-            print(f"当前LLM端点: {new_endpoint}")
-            
-            # 如果LLM相关设置有变更，重新初始化LLM解析器
-            if (old_provider != new_provider or
-                old_model != new_model or
-                old_endpoint != new_endpoint):
-                print(f"LLM设置已更改，从 {old_provider}/{old_model} 到 {new_provider}/{new_model}")
-                self.reinitialize_llm_parser()
-
-    def reinitialize_llm_parser(self):
-        """重新初始化LLM解析器以应用新的提供商设置"""
-        try:
-            # 保存之前的解析器状态以备需要时使用
-            old_parser = self.llm_parser
-            
-            # 使用当前配置创建新的LLM解析器
-            self.llm_parser = AITaskParser(config=self.config)
-            # self.llm_parser = AITaskParser(config_file=self.config)
-            
-            # 显示成功消息
-            QtWidgets.QMessageBox.information(self, "设置已更新", 
-                f"LLM提供商已切换到: {self.config.get('llm', 'provider')}\n"
-                f"模型: {self.config.get('llm', 'model_name')}")
-            
-            print("LLM解析器已重新初始化")
-        except Exception as e:
-            # 如果初始化失败，显示错误并尝试恢复
-            QtWidgets.QMessageBox.critical(self, "错误", 
-                f"无法初始化新的LLM提供商: {str(e)}\n"
-                "将还原为之前的提供商。")
-            print(f"重新初始化LLM解析器失败: {e}")
-
     def tray_icon_activated(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
             if self.isVisible():
@@ -1064,11 +1162,18 @@ class TodoApp(QtWidgets.QMainWindow):
                 self.show()
                 self.activateWindow()
 
+    # def hide(self):
+    #     """重写hide方法，在隐藏主窗口时显示浮窗"""
+    #     super().hide()
+    #     self.floating_button.show()
+
     def hide(self):
         """重写hide方法，在隐藏主窗口时显示浮窗"""
         super().hide()
-        self.floating_button.show()
-    
+        # 只有在用户已登录且浮窗已创建的情况下才显示浮窗
+        if self.user_info and self.floating_button:
+            self.floating_button.show()
+
     def show(self):
         """重写show方法，在显示主窗口时隐藏浮窗"""
         self.floating_button.hide()
@@ -2098,14 +2203,27 @@ class TodoApp(QtWidgets.QMainWindow):
         
         super().changeEvent(event)
 
+# def main():
+#     app = QtWidgets.QApplication(sys.argv)
+#     app.setQuitOnLastWindowClosed(False)  # 关闭窗口不退出程序
+    
+#     todo_app = TodoApp()
+#      # 从服务器或本地存储加载任务，而不是添加示例任务
+#     # todo_app.load_tasks()
+#     todo_app.show()
+
+#     app.aboutToQuit.connect(lambda: todo_app.network_manager.local_storage.save_data())
+    
+#     sys.exit(app.exec_())
+
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)  # 关闭窗口不退出程序
     
     todo_app = TodoApp()
-     # 从服务器或本地存储加载任务，而不是添加示例任务
-    # todo_app.load_tasks()
-    todo_app.show()
+    
+    # 现在会先显示登录窗口，登录成功后再显示主窗口
 
     app.aboutToQuit.connect(lambda: todo_app.network_manager.local_storage.save_data())
     

@@ -1,0 +1,27 @@
+<div class="board-task" id="board-task-{{id}}" data-id="{{id}}">
+    <div class="board-task-header">
+        <span class="task-category">{{category}}</span>
+        <div class="task-actions">
+            <button class="btn-icon task-edit" data-id="{{id}}" title="编辑任务">
+                <i class="bi bi-pencil"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="board-task-content">
+        <p class="{{#completed}}completed{{/completed}}">{{text}}</p>
+    </div>
+    
+    <div class="board-task-footer">
+        {{#due_date}}
+        <span class="task-due {{#overdue}}overdue{{/overdue}}">
+            <i class="bi bi-calendar"></i> {{due_date}}
+        </span>
+        {{/due_date}}
+        
+        <div class="task-checkbox">
+            <input type="checkbox" id="board-check-{{id}}" {{#completed}}checked{{/completed}}>
+            <label for="board-check-{{id}}">完成</label>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,73 @@
+<form id="task-detail-form">
+    <input type="hidden" id="edit-task-id" value="{{id}}">
+    
+    <div class="form-group">
+        <label for="edit-task-text">任务内容</label>
+        <input type="text" id="edit-task-text" class="form-control" value="{{text}}" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="edit-task-category">分类</label>
+        <select id="edit-task-category" class="form-control">
+            <option value="工作" {{#if_category_work}}selected{{/if_category_work}}>工作</option>
+            <option value="个人" {{#if_category_personal}}selected{{/if_category_personal}}>个人</option>
+            <option value="学习" {{#if_category_study}}selected{{/if_category_study}}>学习</option>
+            <option value="其他" {{#if_category_other}}selected{{/if_category_other}}>其他</option>
+        </select>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group form-group-half">
+            <label for="edit-task-due-date">截止日期</label>
+            <input type="date" id="edit-task-due-date" class="form-control" value="{{due_date}}">
+        </div>
+        
+        <div class="form-group form-group-half">
+            <label for="edit-task-due-time">截止时间</label>
+            <input type="time" id="edit-task-due-time" class="form-control" value="{{due_time}}">
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="checkbox-container">
+            <input type="checkbox" id="edit-task-completed" {{#completed}}checked{{/completed}}>
+            <span class="checkmark"></span>
+            标记为已完成
+        </label>
+    </div>
+    
+    <div class="form-group task-creation-info">
+        <small>创建时间: {{created_at_formatted}}</small>
+        {{#completed_at}}
+        <small>完成时间: {{completed_at_formatted}}</small>
+        {{/completed_at}}
+    </div>
+    
+    <div class="form-actions">
+        <button type="button" id="delete-task-btn" class="btn btn-danger">
+            <i class="bi bi-trash"></i> 删除
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2"></i> 保存更改
+        </button>
+    </div>
+</form>
+
+<div class="task-ai-insights">
+    <h4><i class="bi bi-magic"></i> AI 智能助手</h4>
+    <div class="ai-suggestions">
+        <div class="ai-section">
+            <h5>相关任务建议</h5>
+            <div id="related-tasks-container"></div>
+        </div>
+        
+        <div class="ai-section">
+            <h5>拆分建议</h5>
+            <div id="subtasks-container"></div>
+        </div>
+    </div>
+    
+    <button id="generate-ai-insights" class="btn btn-sm btn-outline">
+        <i class="bi bi-lightning"></i> 获取AI建议
+    </button>
+</div>
