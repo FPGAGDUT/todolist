@@ -46,8 +46,8 @@ class TodoApp(QtWidgets.QMainWindow):
 
         # 初始化网络管理器 - 修改为本地优先模式
         self.network_manager = NetworkManager(
-            # base_url="http://localhost:8083/v1", 
-            base_url="http://52.139.168.105:8080/v1",
+            base_url="http://localhost:8080/v1", 
+            # base_url="http://52.139.168.105:8080/v1",
             api_key="your-api-key",
             local_first=True  # 添加本地优先标志
         )
@@ -783,7 +783,7 @@ class TodoApp(QtWidgets.QMainWindow):
         
         # 添加示例任务
         # self.add_sample_tasks()
-        self.load_tasks()
+        # self.load_tasks()
         
         # 连接回车键
         self.task_input.returnPressed.connect(self.add_task)
