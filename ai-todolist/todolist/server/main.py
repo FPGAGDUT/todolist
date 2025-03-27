@@ -365,7 +365,7 @@ def main():
         # 确保数据库结构是最新的
         ensure_db_structure()
 
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=8080)
 
 if __name__ == '__main__':
     main()
