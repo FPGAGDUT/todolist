@@ -1,6 +1,6 @@
 // API服务封装
 const API = {
-    baseUrl: 'http://127.0.0.1:8083/v1',
+    baseUrl: 'http://127.0.0.1:8080/v1',
     token: null,
     
     // 初始化API - 从localStorage获取token

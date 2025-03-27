@@ -21,7 +21,7 @@ from .login import LoginWindow
 # 开启代理
 os.environ["http_proxy"] = "http://127.0.0.1:10808"
 os.environ["https_proxy"] = "http://127.0.0.1:10808"
-
+os.environ["no_proxy"] = "52.139.168.105"
 
 
 class TodoApp(QtWidgets.QMainWindow):
@@ -46,7 +46,8 @@ class TodoApp(QtWidgets.QMainWindow):
 
         # 初始化网络管理器 - 修改为本地优先模式
         self.network_manager = NetworkManager(
-            base_url="http://localhost:8083/v1", 
+            # base_url="http://localhost:8083/v1", 
+            base_url="http://52.139.168.105:8080/v1",
             api_key="your-api-key",
             local_first=True  # 添加本地优先标志
         )
