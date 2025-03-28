@@ -46,8 +46,8 @@ class TodoApp(QtWidgets.QMainWindow):
 
         # 初始化网络管理器 - 修改为本地优先模式
         self.network_manager = NetworkManager(
-            base_url="http://localhost:8080/v1", 
-            # base_url="http://52.139.168.105:8080/v1",
+            # base_url="http://localhost:8080/v1", 
+            base_url="http://52.139.168.105:8080/v1",
             api_key="your-api-key",
             local_first=True  # 添加本地优先标志
         )
@@ -62,6 +62,7 @@ class TodoApp(QtWidgets.QMainWindow):
         
         # 初始化提醒系统
         self.reminder = Reminder()
+        self.reminder.reminder_window.task_completed.connect(self.complete_task_from_reminder)
         self.reminder.start()
         
         # 设置拖动相关变量
@@ -83,6 +84,77 @@ class TodoApp(QtWidgets.QMainWindow):
         self.setup_tray_icon()
         # 添加用户登录逻辑
         self.show_login_window()
+
+    def add_test_reminder(self):
+        """添加一个测试提醒，在1分钟后触发"""
+        # 生成一个唯一ID
+        import uuid
+        task_id = str(uuid.uuid4())
+        
+        # 创建测试任务文本
+        task_text = "测试提醒任务 - 这是一个在应用启动后1分钟触发的提醒"
+        
+        # 计算1分钟后的时间
+        from datetime import datetime, timedelta
+        due_time = datetime.now() + timedelta(minutes=1)
+        
+        # 解析日期和时间
+        due_date = due_time.date()
+        due_time_obj = due_time.time()
+        
+        # 创建任务并添加到UI
+        task_data = {
+            "id": task_id,
+            "text": task_text,
+            "category": "测试",
+            "completed": False,
+            "created_at": datetime.now().isoformat(),
+            "due_date": due_time.strftime("%Y-%m-%d"),
+            "due_time": due_time.strftime("%H:%M")
+        }
+        
+        # 添加到UI列表 - 这里修改为使用create_task_item
+        self.create_task_item(
+            task_text,
+            "测试",
+            False,
+            task_id,
+            due_date,
+            due_time_obj
+        )
+        
+        # 添加到提醒系统
+        if hasattr(self, 'reminder') and self.reminder:
+            self.reminder.add_reminder(task_id, task_text, due_time)
+            
+            # 打印提醒信息
+            print(f"已添加测试提醒:")
+            print(f"  任务ID: {task_id}")
+            print(f"  任务内容: {task_text}")
+            print(f"  提醒时间: {due_time.strftime('%Y-%m-%d %H:%M:%S')} (大约1分钟后)")
+            
+            # 更新状态栏
+            self.statusBar().showMessage(f"已添加测试提醒，将在1分钟后触发", 5000)
+        else:
+            print("无法添加提醒 - 提醒系统未初始化")
+
+    # 添加任务完成处理方法
+    def complete_task_from_reminder(self, task_id):
+        """从提醒窗口完成任务"""
+        print(f"从提醒完成任务: {task_id}")
+        
+        # 查找任务项并标记为完成
+        for i in range(self.task_list_layout.count()):
+            task_widget = self.task_list_layout.itemAt(i).widget()
+            if isinstance(task_widget, QtWidgets.QFrame) and task_widget.property("task_id") == task_id:
+                # 找到复选框并设置为选中
+                checkbox = task_widget.layout().itemAt(0).widget()
+                if checkbox and isinstance(checkbox, QtWidgets.QCheckBox):
+                    checkbox.setChecked(True)
+                    
+                    # 触发任务状态变更处理（同步到服务器）
+                    self.task_state_changed(checkbox, task_widget)
+                    break
 
 
     def apply_styles(self):
@@ -243,6 +315,9 @@ class TodoApp(QtWidgets.QMainWindow):
         
         # 显示主窗口
         self.show()
+
+        # 添加测试提醒 - 在应用启动后1分钟触发
+        QtCore.QTimer.singleShot(100, self.add_test_reminder)
     
     def update_user_info_display(self):
         """更新UI显示用户信息"""
